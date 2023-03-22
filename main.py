@@ -38,22 +38,45 @@ def fitness_pattern_match(organism):
 class PATS_Approximator:
     def __init__(self, pattern, population_size):
         # class variables
+        self.mutation_rate = 0.25
         self.pattern = pattern
         self.pattern_size = int(math.sqrt(len(pattern)))
         self.population_size = population_size
         self.generation = 0
-        self.population = [Organism(self.pattern)
+        self.population = [Organism(self.pattern, self.mutation_rate)
                            for _ in range(self.population_size)]
+
+    def new_population(self):
+        # top ten of population
+        top_ten_index = int(len(self.population) * 0.1)
+        top_ten = []
+        for i in range(top_ten_index):
+            top_ten.append(self.population[i])
+
+        # selection and mutate
+        next_population = []
+        next_population.extend(top_ten)
+        while len(next_population) < self.population_size:
+            # select random from best
+            random_index = random.randint(0, top_ten_index - 1)
+            # mutate and add
+            next_population.append(top_ten[random_index].mutate())
+
+        return next_population
+
+    def print_best(self):
+        best = self.population[0]
+        best_assembly = best.seed_assembly.assemble(best.gluetable)
+        print("Score", fitness_pattern_match(best))
+        print(best_assembly)
 
     def run_generation(self):
         self.generation += 1
 
+        # score and sort
         self.population.sort(key=fitness_pattern_match, reverse=True)
-
-        o1 = self.population[0]
-        o1_a = o1.seed_assembly.assemble(o1.gluetable)
-        print(o1_a)
-        print(fitness_pattern_match(o1))
+        # select and mutate
+        self.population = self.new_population()
 
 
 #
@@ -186,8 +209,9 @@ class Assembly:
 # Organism
 #
 class Organism:
-    def __init__(self, pattern):
+    def __init__(self, pattern, mutation_rate):
         # class variables
+        self.mutation_rate = mutation_rate
         self.pattern = pattern
         self.pattern_size = int(math.sqrt(len(pattern)))
         self.max_tiles = self.pattern_size ** 2
@@ -198,6 +222,38 @@ class Organism:
         seed_tiles = [random.randint(1, self.max_glues)
                       for _ in range(self.pattern_size * 2)]
         self.seed_assembly = Assembly(seed_tiles)
+
+    def mutate(self):
+        result = copy.deepcopy(self)
+
+        # mutate gluetable
+        for s in range(1, result.gluetable.max_glues + 1):
+            for w in range(1, result.gluetable.max_glues + 1):
+                north, east = result.gluetable.glues_at(s, w)
+
+                mutation_change = random.random()
+                if mutation_change <= result.mutation_rate:
+                    north = random.randint(1, result.gluetable.max_glues)
+                mutation_change = random.random()
+                if mutation_change <= result.mutation_rate:
+                    east = random.randint(1, result.gluetable.max_glues)
+
+                result.gluetable.set_glues_at(s, w, (north, east))
+
+        # mutate seed
+        for r in range(1, result.seed_assembly.size):
+            mutation_change = random.random()
+            if mutation_change <= result.mutation_rate:
+                result.seed_assembly.update_at(r, 0, Tile(
+                    east=random.randint(1, result.gluetable.max_glues)))
+
+        for c in range(1, result.seed_assembly.size):
+            mutation_change = random.random()
+            if mutation_change <= result.mutation_rate:
+                result.seed_assembly.update_at(0, c, Tile(
+                    north=random.randint(1, result.gluetable.max_glues)))
+
+        return result
 
 
 #
@@ -214,6 +270,9 @@ class GlueTable:
 
     def glues_at(self, x, y):
         return self.gt[(x * self.max_glues) + y]
+
+    def set_glues_at(self, x, y, g):
+        self.gt[(x * self.max_glues) + y] = g
 
 
 #
@@ -233,8 +292,14 @@ if __name__ == "__main__":
     print(greeting)
 
     pats = PATS_Approximator(
-        ['b', 'w', 'b', 'w', 'b', 'w', 'b', 'w', 'b'], 10000)
-    pats.run_generation()
+        ['b', 'w', 'b', 'w', 'b', 'w', 'b', 'w', 'b'], 100)
+    # pats = PATS_Approximator(
+    #     ['b', 'w', 'w', 'b'], 100)
+
+    pats.print_best()
+    for _ in range(1000):
+        pats.run_generation()
+    pats.print_best()
 
     # # Fitness function test
     # o1 = Organism(['b', 'w', 'w', 'b'])
