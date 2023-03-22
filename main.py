@@ -1,6 +1,35 @@
 # imports
 import copy
 import random
+import math
+
+
+#
+# Fitness functions
+#
+
+# Perfect score: every color correct + no tiles used
+# Subtract 1 for every incorrect color
+# Subtract 1 for every tile used
+def fitness_pattern_match(organism):
+    score = organism.pattern_size ** 2 * 2
+    tile_color_map = {}
+    assembly: Assembly = organism.seed_assembly.assemble(
+        organism.gluetable)
+
+    for r in range(1, assembly.size):
+        for c in range(1, assembly.size):
+            color = organism.pattern[(
+                (r - 1) * organism.pattern_size) + (c - 1)]
+            tile = assembly.tile_at(r, c)
+
+            if tile not in tile_color_map:
+                tile_color_map[tile] = color
+            elif tile_color_map[tile] != color:
+                score -= 1
+
+    score -= len(tile_color_map)
+    return score
 
 
 #
@@ -9,14 +38,22 @@ import random
 class PATS_Approximator:
     def __init__(self, pattern, population_size):
         # class variables
-        self.pattern_size = len(pattern) / 2
+        self.pattern = pattern
+        self.pattern_size = int(math.sqrt(len(pattern)))
         self.population_size = population_size
         self.generation = 0
-        self.population = [Organism(self.pattern_size)
+        self.population = [Organism(self.pattern)
                            for _ in range(self.population_size)]
 
     def run_generation(self):
         self.generation += 1
+
+        self.population.sort(key=fitness_pattern_match, reverse=True)
+
+        o1 = self.population[0]
+        o1_a = o1.seed_assembly.assemble(o1.gluetable)
+        print(o1_a)
+        print(fitness_pattern_match(o1))
 
 
 #
@@ -29,6 +66,39 @@ class Tile:
         self.east = east
         self.south = south
         self.west = west
+
+    def __eq__(self, o):
+        if isinstance(o, Tile):
+            res = self.north == o.north and self.east == o.east
+            res = res and self.south == o.south and self.west == o.west
+            return res
+        else:
+            return NotImplemented
+
+    def __hash__(self):
+        return hash((self.north, self.east, self.south, self.west))
+
+    def __str__(self):
+        result = ""
+
+        # Separator string
+        separator = "--------"
+
+        # Top separator
+        result += separator + "\n"
+
+        # Glues
+        line = "|  {:^3} |".format(self.north)
+        result += line + "\n"
+        line = "|{:^3}{:^3}|".format(self.west, self.east)
+        result += line + "\n"
+        line = "|  {:^3} |".format(self.south)
+        result += line + "\n"
+
+        # Bottom separator
+        result += separator
+
+        return result
 
 
 #
@@ -65,8 +135,6 @@ class Assembly:
             for c in range(1, result.size):
                 south_glue = result.tile_at(r - 1, c).north
                 west_glue = result.tile_at(r, c - 1).east
-
-                print("west", west_glue, "south", south_glue)
 
                 north_glue, east_glue = gluetable.glues_at(
                     south_glue, west_glue)
@@ -118,9 +186,10 @@ class Assembly:
 # Organism
 #
 class Organism:
-    def __init__(self, pattern_size):
+    def __init__(self, pattern):
         # class variables
-        self.pattern_size = pattern_size
+        self.pattern = pattern
+        self.pattern_size = int(math.sqrt(len(pattern)))
         self.max_tiles = self.pattern_size ** 2
         self.max_glues = self.max_tiles * 2
         self.gluetable = GlueTable(self.max_glues)
@@ -163,4 +232,20 @@ if __name__ == "__main__":
             """
     print(greeting)
 
-    pats = PATS_Approximator()
+    pats = PATS_Approximator(
+        ['b', 'w', 'b', 'w', 'b', 'w', 'b', 'w', 'b'], 10000)
+    pats.run_generation()
+
+    # # Fitness function test
+    # o1 = Organism(['b', 'w', 'w', 'b'])
+    # o1.seed_assembly.update_at(0, 1, Tile(north=1))
+    # o1.seed_assembly.update_at(0, 2, Tile(north=2))
+    # o1.seed_assembly.update_at(1, 0, Tile(east=1))
+    # o1.seed_assembly.update_at(2, 0, Tile(east=2))
+
+    # o1.gluetable.gt[(1 * o1.gluetable.max_glues) + 1] = (2, 2)
+    # o1.gluetable.gt[(2 * o1.gluetable.max_glues) + 2] = (1, 1)
+
+    # res = o1.seed_assembly.assemble(o1.gluetable)
+    # print(res)
+    # print(fitness_pattern_match(o1))
