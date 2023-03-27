@@ -2,34 +2,18 @@
 import copy
 import random
 import math
+import datetime
+import os
+import sys
 
 
 #
-# Fitness functions
+# Fitness key functions
 #
-
-# Perfect score: every color correct + no tiles used
-# Subtract 1 for every incorrect color
-# Subtract 1 for every tile used
+# Need to redefine these functions outside the class for the sort function
+#
 def fitness_pattern_match(organism):
-    score = organism.pattern_size ** 2 * 2
-    tile_color_map = {}
-    assembly: Assembly = organism.seed_assembly.assemble(
-        organism.gluetable)
-
-    for r in range(1, assembly.size):
-        for c in range(1, assembly.size):
-            color = organism.pattern[(
-                (r - 1) * organism.pattern_size) + (c - 1)]
-            tile = assembly.tile_at(r, c)
-
-            if tile not in tile_color_map:
-                tile_color_map[tile] = color
-            elif tile_color_map[tile] != color:
-                score -= 1
-
-    score -= len(tile_color_map)
-    return score
+    return organism.fitness_pattern_match()
 
 
 #
@@ -38,6 +22,14 @@ def fitness_pattern_match(organism):
 class PATS_Approximator:
     def __init__(self, pattern, population_size):
         # class variables
+        self.id = datetime.datetime.now()
+        self.id = (
+            str(self.id.date())
+            + "-"
+            + f"{self.id.hour:02}"
+            + f"{self.id.minute:02}"
+            + f"{self.id.second:02}"
+        )
         self.mutation_rate = 0.25
         self.pattern = pattern
         self.pattern_size = int(math.sqrt(len(pattern)))
@@ -45,6 +37,9 @@ class PATS_Approximator:
         self.generation = 0
         self.population = [Organism(self.pattern, self.mutation_rate)
                            for _ in range(self.population_size)]
+        self.population.sort(key=fitness_pattern_match, reverse=True)
+        self.best_score = self.population[0].score
+        self.write_population()
 
     def new_population(self):
         # top ten of population
@@ -65,16 +60,36 @@ class PATS_Approximator:
         return next_population
 
     def print_best(self):
-        best = self.population[0]
-        best_assembly = best.seed_assembly.assemble(best.gluetable)
-        print("Score", fitness_pattern_match(best))
-        print(best_assembly)
+        print(f"*** Generation {self.generation} ***")
+        print(self.population[0])
+
+    def write_population(self):
+        path = os.path.join("runs", str(
+            self.id), "score_" + f"{self.best_score:03}" + "_population.txt")
+
+        # make dir
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write(f"*** Generation {self.generation} ***\n\n")
+            f.write("--- Best Organism ---\n")
+            f.write(str(self.population[0]))
+            for i in range(1, self.population_size):
+                f.write(f"\n--- Population {i:03} ---\n")
+                f.write(str(self.population[i]))
+                f.write("\n")
 
     def run_generation(self):
         self.generation += 1
 
         # score and sort
         self.population.sort(key=fitness_pattern_match, reverse=True)
+
+        # update best score
+        if self.population[0].score > self.best_score:
+            self.best_score = self.population[0].score
+            # write to file
+            self.write_population()
+
         # select and mutate
         self.population = self.new_population()
 
@@ -218,10 +233,52 @@ class Organism:
         self.max_glues = self.max_tiles * 2
         self.gluetable = GlueTable(self.max_glues)
 
-        # Seed assembly
+        # seed assembly
         seed_tiles = [random.randint(1, self.max_glues)
                       for _ in range(self.pattern_size * 2)]
         self.seed_assembly = Assembly(seed_tiles)
+
+        # init
+        self.fitness_pattern_match()
+
+    def __str__(self):
+        res = ""
+
+        # score
+        res += f"Score: {self.score}\n"
+
+        # tileset map
+        res += "Tile set maping:\n"
+        for k in self.tile_color_map.keys():
+            res += f"({k.north}, {k.east}, {k.south}, {k.west})" + \
+                f": {self.tile_color_map[k]}\n"
+
+        # assembly
+        res += str(self.assembly)
+
+        return res
+
+    # Perfect score: every color correct + no tiles used
+    # Subtract 1 for every incorrect color
+    # Subtract 1 for every tile used
+    def fitness_pattern_match(self):
+        self.score = self.pattern_size ** 2 * 2
+        self.tile_color_map = {}
+        self.assembly = self.seed_assembly.assemble(self.gluetable)
+
+        for r in range(1, self.assembly.size):
+            for c in range(1, self.assembly.size):
+                color = self.pattern[(
+                    (r - 1) * self.pattern_size) + (c - 1)]
+                tile = self.assembly.tile_at(r, c)
+
+                if tile not in self.tile_color_map:
+                    self.tile_color_map[tile] = color
+                elif self.tile_color_map[tile] != color:
+                    self.score -= 1
+
+        self.score -= len(self.tile_color_map)
+        return self.score
 
     def mutate(self):
         result = copy.deepcopy(self)
@@ -293,24 +350,12 @@ if __name__ == "__main__":
 
     pats = PATS_Approximator(
         ['b', 'w', 'b', 'w', 'b', 'w', 'b', 'w', 'b'], 100)
-    # pats = PATS_Approximator(
-    #     ['b', 'w', 'w', 'b'], 100)
+
+    generations = 25
+    if len(sys.argv) > 1:
+        generations = int(sys.argv[1])
 
     pats.print_best()
-    for _ in range(1000):
+    for _ in range(generations):
         pats.run_generation()
     pats.print_best()
-
-    # # Fitness function test
-    # o1 = Organism(['b', 'w', 'w', 'b'])
-    # o1.seed_assembly.update_at(0, 1, Tile(north=1))
-    # o1.seed_assembly.update_at(0, 2, Tile(north=2))
-    # o1.seed_assembly.update_at(1, 0, Tile(east=1))
-    # o1.seed_assembly.update_at(2, 0, Tile(east=2))
-
-    # o1.gluetable.gt[(1 * o1.gluetable.max_glues) + 1] = (2, 2)
-    # o1.gluetable.gt[(2 * o1.gluetable.max_glues) + 2] = (1, 1)
-
-    # res = o1.seed_assembly.assemble(o1.gluetable)
-    # print(res)
-    # print(fitness_pattern_match(o1))
