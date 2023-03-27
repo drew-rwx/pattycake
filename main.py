@@ -348,8 +348,14 @@ if __name__ == "__main__":
             """
     print(greeting)
 
-    pats = PATS_Approximator(
-        ['b', 'w', 'b', 'w', 'b', 'w', 'b', 'w', 'b'], 100)
+    # pats = PATS_Approximator(
+    #     ['b', 'w', 'b', 'w', 'b', 'w', 'b', 'w', 'b'], 100)
+
+    # TODO print initial info
+    colors = ['b', 'w']
+    pattern_size = 6
+    pattern = [random.choice(colors) for _ in range(pattern_size ** 2)]
+    pats = PATS_Approximator(pattern, 100)
 
     generations = 25
     if len(sys.argv) > 1:
