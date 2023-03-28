@@ -262,10 +262,11 @@ class Organism:
         res = ""
 
         # score
-        res += f"Score: {self.score}\n"
+        res += f"Score: {self.score} / {self.perfect_score} \n"
+        res += f"Incorrectly placed tiles: {self.incorrect} \n"
 
         # tileset map
-        res += "Tile set maping:\n"
+        res += f"Tile set maping ({len(self.tile_color_map)} tiles):\n"
         for k in self.tile_color_map.keys():
             res += f"({k.north}, {k.east}, {k.south}, {k.west})" + \
                 f": {self.tile_color_map[k]}\n"
@@ -279,7 +280,9 @@ class Organism:
     # Subtract 1 for every incorrect color
     # Subtract 1 for every tile used
     def fitness_pattern_match(self):
+        self.perfect_score = self.pattern_size ** 2 * 2
         self.score = self.pattern_size ** 2 * 2
+        self.incorrect = 0
         self.tile_color_map = {}
         self.assembly = self.seed_assembly.assemble(self.gluetable)
 
@@ -292,8 +295,9 @@ class Organism:
                 if tile not in self.tile_color_map:
                     self.tile_color_map[tile] = color
                 elif self.tile_color_map[tile] != color:
-                    self.score -= 1
+                    self.incorrect += 1
 
+        self.score -= self.incorrect
         self.score -= len(self.tile_color_map)
         return self.score
 
