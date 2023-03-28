@@ -35,6 +35,7 @@ class PATS_Approximator:
         self.pattern_size = int(math.sqrt(len(pattern)))
         self.population_size = population_size
         self.generation = 0
+        self.write_info()
         self.population = [Organism(self.pattern, self.mutation_rate)
                            for _ in range(self.population_size)]
         self.population.sort(key=fitness_pattern_match, reverse=True)
@@ -59,25 +60,6 @@ class PATS_Approximator:
 
         return next_population
 
-    def print_best(self):
-        print(f"*** Generation {self.generation} ***")
-        print(self.population[0])
-
-    def write_population(self):
-        path = os.path.join("runs", str(
-            self.id), "score_" + f"{self.best_score:03}" + "_population.txt")
-
-        # make dir
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as f:
-            f.write(f"*** Generation {self.generation} ***\n\n")
-            f.write("--- Best Organism ---\n")
-            f.write(str(self.population[0]))
-            for i in range(1, self.population_size):
-                f.write(f"\n--- Population {i:03} ---\n")
-                f.write(str(self.population[i]))
-                f.write("\n")
-
     def run_generation(self):
         self.generation += 1
 
@@ -92,6 +74,41 @@ class PATS_Approximator:
 
         # select and mutate
         self.population = self.new_population()
+
+    def print_best(self):
+        print(f"*** Generation {self.generation} ***")
+        print(self.population[0])
+
+    def write_info(self):
+        path = os.path.join("runs", str(self.id), "_info.txt")
+
+        # make dir, write info in file
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write(f"ID: {self.id}\n")
+            f.write(f"Population size: {self.population_size}\n")
+            f.write(f"Mutation rate: {self.mutation_rate}\n\n")
+
+            f.write(f"Pattern:\n")
+            for r in range(self.pattern_size):
+                for c in range(self.pattern_size):
+                    f.write(self.pattern[(r * self.pattern_size) + c] + " ")
+                f.write("\n")
+
+    def write_population(self):
+        path = os.path.join("runs", str(
+            self.id), "score_" + f"{self.best_score:03}" + "_population.txt")
+
+        # make dir, write info in file
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write(f"*** Generation {self.generation} ***\n\n")
+            f.write("--- Best Organism ---\n")
+            f.write(str(self.population[0]))
+            for i in range(1, self.population_size):
+                f.write(f"\n--- Population {i:03} ---\n")
+                f.write(str(self.population[i]))
+                f.write("\n")
 
 
 #
@@ -351,7 +368,6 @@ if __name__ == "__main__":
     # pats = PATS_Approximator(
     #     ['b', 'w', 'b', 'w', 'b', 'w', 'b', 'w', 'b'], 100)
 
-    # TODO print initial info
     colors = ['b', 'w']
     pattern_size = 6
     pattern = [random.choice(colors) for _ in range(pattern_size ** 2)]
@@ -362,6 +378,7 @@ if __name__ == "__main__":
         generations = int(sys.argv[1])
 
     pats.print_best()
-    for _ in range(generations):
+    for g in range(generations):
         pats.run_generation()
+        print(f"Generation {g + 1} / {generations}")
     pats.print_best()
