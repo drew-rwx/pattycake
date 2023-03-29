@@ -1,0 +1,11 @@
+ID: 2023-03-28-163339
+Population size: 100
+Mutation rate: 0.25
+
+Pattern:
+b b b b b b 
+w w w b w w 
+w b w w b b 
+b b w b w w 
+w b w b w w 
+w w w w b b 
