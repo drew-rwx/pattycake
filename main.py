@@ -35,6 +35,8 @@ class PATS_Approximator:
         self.pattern_size = int(math.sqrt(len(pattern)))
         self.population_size = population_size
         self.generation = 0
+        self.random_seed = random.randrange(sys.maxsize)
+        random.seed(self.random_seed)
         self.write_info()
         self.population = [Organism(self.pattern, self.mutation_rate)
                            for _ in range(self.population_size)]
@@ -86,6 +88,7 @@ class PATS_Approximator:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w") as f:
             f.write(f"ID: {self.id}\n")
+            f.write(f"Random seed: {self.random_seed}\n")
             f.write(f"Population size: {self.population_size}\n")
             f.write(f"Mutation rate: {self.mutation_rate}\n\n")
 
