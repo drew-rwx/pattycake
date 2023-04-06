@@ -1,0 +1,3 @@
+w w b
+w b b
+b b w

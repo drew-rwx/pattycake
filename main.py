@@ -372,20 +372,29 @@ if __name__ == "__main__":
             """
     print(greeting)
 
-    # pats = PATS_Approximator(
-    #     ['b', 'w', 'b', 'w', 'b', 'w', 'b', 'w', 'b'], 100)
-
+    # default random pattern
     colors = ['b', 'w']
     pattern_size = 6
     pattern = [random.choice(colors) for _ in range(pattern_size ** 2)]
+
+    # if pattern passed in, use that instead
+    if len(sys.argv) > 2:
+        pattern = []
+        with open(sys.argv[2], "r") as file:
+            data = file.read()
+            pattern = data.split()
+
     pats = PATS_Approximator(pattern, 100)
 
+    # number of generations
     generations = 25
     if len(sys.argv) > 1:
         generations = int(sys.argv[1])
 
+    # run the algorithm
     pats.print_best()
     for g in range(generations):
         pats.run_generation()
         print(f"Generation {g + 1} / {generations}")
+    print()
     pats.print_best()
