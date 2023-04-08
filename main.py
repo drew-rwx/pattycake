@@ -20,6 +20,14 @@ def ff_pattern_match_best(organism):
     return organism.ff_pattern_match_best()
 
 
+def ff_pattern_match_first_tile_limit(organism):
+    return organism.ff_pattern_match_first_tile_limit()
+
+
+def ff_pattern_match_best_tile_limit(organism):
+    return organism.ff_pattern_match_best_tile_limit()
+
+
 #
 # PATSApproximator
 #
@@ -35,6 +43,7 @@ class PATS_Approximator:
             + f"{self.id.second:02}"
         )
         self.mutation_rate = 0.25
+        self.seed_mutation_rate = 0.30
         self.pattern = pattern
         self.pattern_size = int(math.sqrt(len(pattern)))
         self.population_size = population_size
@@ -42,11 +51,17 @@ class PATS_Approximator:
         self.random_seed = random.randrange(sys.maxsize)
         random.seed(self.random_seed)
         self.write_info()
-        self.population = [Organism(self.pattern, self.mutation_rate)
+        self.tileset_size_limit = self.pattern_size ** 2 - 1
+        self.population = [Organism(self.pattern, self.mutation_rate, self.seed_mutation_rate)
                            for _ in range(self.population_size)]
-        self.population.sort(key=ff_pattern_match_best, reverse=True)
+        self.population.sort(
+            key=ff_pattern_match_best_tile_limit, reverse=True)
         self.best_score = self.population[0].score
         self.write_population()
+
+    def update_population(self):
+        for i in self.population:
+            i.tileset_size_limit = self.tileset_size_limit
 
     def new_population(self):
         # top ten of population
@@ -70,7 +85,13 @@ class PATS_Approximator:
         self.generation += 1
 
         # score and sort
-        self.population.sort(key=ff_pattern_match_best, reverse=True)
+        self.population.sort(
+            key=ff_pattern_match_best_tile_limit, reverse=True)
+        tileset_size = len(self.population[0].tile_color_map)
+        incorrect = self.population[0].incorrect
+        if incorrect == 0 and tileset_size < self.tileset_size_limit:
+            self.tileset_size_limit = tileset_size
+            self.update_population()
 
         # update best score
         if self.population[0].score > self.best_score:
@@ -95,6 +116,7 @@ class PATS_Approximator:
             f.write(f"Random seed: {self.random_seed}\n")
             f.write(f"Population size: {self.population_size}\n")
             f.write(f"Mutation rate: {self.mutation_rate}\n\n")
+            f.write(f"Seed mutation rate: {self.seed_mutation_rate}\n\n")
 
             f.write(f"Pattern:\n")
             for r in range(self.pattern_size):
@@ -248,14 +270,16 @@ class Assembly:
 # Organism
 #
 class Organism:
-    def __init__(self, pattern, mutation_rate):
+    def __init__(self, pattern, mutation_rate, seed_mutation_rate):
         # class variables
         self.mutation_rate = mutation_rate
+        self.seed_mutation_rate = seed_mutation_rate
         self.pattern = pattern
         self.pattern_size = int(math.sqrt(len(pattern)))
         self.max_tiles = self.pattern_size ** 2
         self.max_glues = self.max_tiles * 2
         self.gluetable = GlueTable(self.max_glues)
+        self.tileset_size_limit = self.max_tiles - 1
 
         # seed assembly
         seed_tiles = [random.randint(1, self.max_glues)
@@ -263,7 +287,7 @@ class Organism:
         self.seed_assembly = Assembly(seed_tiles)
 
         # init
-        self.ff_pattern_match_best()
+        self.ff_pattern_match_best_tile_limit()
 
     def __str__(self):
         res = ""
@@ -271,6 +295,7 @@ class Organism:
         # score
         res += f"Score: {self.score} / {self.perfect_score} \n"
         res += f"Incorrectly placed tiles: {self.incorrect} \n"
+        res += f"Tile set size limit: {self.tileset_size_limit} \n"
 
         # tileset map
         res += f"Tile set maping ({len(self.tile_color_map)} tiles):\n"
@@ -288,7 +313,7 @@ class Organism:
     # Subtract 1 for every tile used
     def ff_pattern_match_first(self):
         self.perfect_score = self.pattern_size ** 2 * 2
-        self.score = self.pattern_size ** 2 * 2
+        self.score = self.perfect_score
         self.incorrect = 0
         self.tile_color_map = {}
         self.assembly = self.seed_assembly.assemble(self.gluetable)
@@ -310,10 +335,37 @@ class Organism:
 
     # Perfect score: every color correct + no tiles used
     # Subtract 1 for every incorrect color
+    # Subtract 1 for every tile used over the limit
+    def ff_pattern_match_first_tile_limit(self):
+        self.perfect_score = self.pattern_size ** 2 * 2
+        self.score = self.perfect_score
+        self.incorrect = 0
+        self.tile_color_map = {}
+        self.assembly = self.seed_assembly.assemble(self.gluetable)
+
+        for r in range(1, self.assembly.size):
+            for c in range(1, self.assembly.size):
+                color = self.pattern[(
+                    (self.pattern_size - r) * self.pattern_size) + (c - 1)]
+                tile = self.assembly.tile_at(r, c)
+
+                if tile not in self.tile_color_map:
+                    self.tile_color_map[tile] = color
+                elif self.tile_color_map[tile] != color:
+                    self.incorrect += 1
+
+        self.score -= self.incorrect
+        self.score -= len(self.tile_color_map)
+        if len(self.tile_color_map) > self.tileset_size_limit:
+            self.score -= len(self.tile_color_map) - self.tileset_size_limit
+        return self.score
+
+    # Perfect score: every color correct + no tiles used
+    # Subtract 1 for every incorrect color
     # Subtract 1 for every tile used
     def ff_pattern_match_best(self):
         self.perfect_score = self.pattern_size ** 2 * 2
-        self.score = self.pattern_size ** 2 * 2
+        self.score = self.perfect_score
         self.incorrect = 0
         self.tile_color_map = {}
         self.assembly = self.seed_assembly.assemble(self.gluetable)
@@ -357,6 +409,57 @@ class Organism:
         self.score -= len(self.tile_color_map)
         return self.score
 
+    # Perfect score: every color correct + no tiles used
+    # Subtract 1 for every incorrect color
+    # Subtract 1 for every tile used
+    def ff_pattern_match_best_tile_limit(self):
+        self.perfect_score = self.pattern_size ** 2 * 2
+        self.score = self.perfect_score
+        self.incorrect = 0
+        self.tile_color_map = {}
+        self.assembly = self.seed_assembly.assemble(self.gluetable)
+
+        for r in range(1, self.assembly.size):
+            for c in range(1, self.assembly.size):
+                color = self.pattern[(
+                    (self.pattern_size - r) * self.pattern_size) + (c - 1)]
+                tile = self.assembly.tile_at(r, c)
+
+                if tile not in self.tile_color_map:
+                    if color == 'b':
+                        entry = (1, 0)
+                    elif color == 'w':
+                        entry = (0, 1)
+                    else:
+                        quit()
+
+                    self.tile_color_map[tile] = entry
+                else:
+                    if color == 'b':
+                        entry = self.tile_color_map[tile]
+                        self.tile_color_map[tile] = (entry[0] + 1, entry[1])
+                    elif color == 'w':
+                        entry = self.tile_color_map[tile]
+                        self.tile_color_map[tile] = (entry[0], entry[1] + 1)
+                    else:
+                        quit()
+
+        for t in self.tile_color_map.keys():
+            b_count, w_count = self.tile_color_map[t]
+
+            if b_count >= w_count:
+                self.tile_color_map[t] = 'b'
+                self.incorrect += w_count
+            else:
+                self.tile_color_map[t] = 'w'
+                self.incorrect += b_count
+
+        self.score -= self.incorrect
+        self.score -= len(self.tile_color_map)
+        if len(self.tile_color_map) > self.tileset_size_limit:
+            self.score -= len(self.tile_color_map) - self.tileset_size_limit
+        return self.score
+
     def mutate(self):
         result = copy.deepcopy(self)
 
@@ -377,13 +480,13 @@ class Organism:
         # mutate seed
         for r in range(1, result.seed_assembly.size):
             mutation_change = random.random()
-            if mutation_change <= result.mutation_rate:
+            if mutation_change <= result.seed_mutation_rate:
                 result.seed_assembly.update_at(r, 0, Tile(
                     east=random.randint(1, result.gluetable.max_glues)))
 
         for c in range(1, result.seed_assembly.size):
             mutation_change = random.random()
-            if mutation_change <= result.mutation_rate:
+            if mutation_change <= result.seed_mutation_rate:
                 result.seed_assembly.update_at(0, c, Tile(
                     north=random.randint(1, result.gluetable.max_glues)))
 
@@ -437,7 +540,7 @@ if __name__ == "__main__":
             data = file.read()
             pattern = data.split()
 
-    pats = PATS_Approximator(pattern, 100)
+    pats = PATS_Approximator(pattern, 200)
 
     # number of generations
     generations = 25
