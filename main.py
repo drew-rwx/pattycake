@@ -16,6 +16,10 @@ def fitness_pattern_match(organism):
     return organism.fitness_pattern_match()
 
 
+def fitness_pattern_match_2_color(organism):
+    return organism.fitness_pattern_match_2_color()
+
+
 #
 # PATSApproximator
 #
@@ -66,7 +70,7 @@ class PATS_Approximator:
         self.generation += 1
 
         # score and sort
-        self.population.sort(key=fitness_pattern_match, reverse=True)
+        self.population.sort(key=fitness_pattern_match_2_color, reverse=True)
 
         # update best score
         if self.population[0].score > self.best_score:
@@ -292,13 +296,62 @@ class Organism:
         for r in range(1, self.assembly.size):
             for c in range(1, self.assembly.size):
                 color = self.pattern[(
-                    (r - 1) * self.pattern_size) + (c - 1)]
+                    (self.pattern_size - r) * self.pattern_size) + (c - 1)]
                 tile = self.assembly.tile_at(r, c)
 
                 if tile not in self.tile_color_map:
                     self.tile_color_map[tile] = color
                 elif self.tile_color_map[tile] != color:
                     self.incorrect += 1
+
+        self.score -= self.incorrect
+        self.score -= len(self.tile_color_map)
+        return self.score
+
+    # Perfect score: every color correct + no tiles used
+    # Subtract 1 for every incorrect color
+    # Subtract 1 for every tile used
+    def fitness_pattern_match_2_color(self):
+        self.perfect_score = self.pattern_size ** 2 * 2
+        self.score = self.pattern_size ** 2 * 2
+        self.incorrect = 0
+        self.tile_color_map = {}
+        self.assembly = self.seed_assembly.assemble(self.gluetable)
+
+        for r in range(1, self.assembly.size):
+            for c in range(1, self.assembly.size):
+                color = self.pattern[(
+                    (self.pattern_size - r) * self.pattern_size) + (c - 1)]
+                tile = self.assembly.tile_at(r, c)
+
+                if tile not in self.tile_color_map:
+                    if color == 'b':
+                        entry = (1, 0)
+                    elif color == 'w':
+                        entry = (0, 1)
+                    else:
+                        quit()
+
+                    self.tile_color_map[tile] = entry
+                else:
+                    if color == 'b':
+                        entry = self.tile_color_map[tile]
+                        self.tile_color_map[tile] = (entry[0] + 1, entry[1])
+                    elif color == 'w':
+                        entry = self.tile_color_map[tile]
+                        self.tile_color_map[tile] = (entry[0], entry[1] + 1)
+                    else:
+                        quit()
+
+        for t in self.tile_color_map.keys():
+            b_count, w_count = self.tile_color_map[t]
+
+            if b_count >= w_count:
+                self.tile_color_map[t] = 'b'
+                self.incorrect += w_count
+            else:
+                self.tile_color_map[t] = 'w'
+                self.incorrect += b_count
 
         self.score -= self.incorrect
         self.score -= len(self.tile_color_map)
