@@ -115,7 +115,7 @@ class PATS_Approximator:
             f.write(f"ID: {self.id}\n")
             f.write(f"Random seed: {self.random_seed}\n")
             f.write(f"Population size: {self.population_size}\n")
-            f.write(f"Mutation rate: {self.mutation_rate}\n\n")
+            f.write(f"Mutation rate: {self.mutation_rate}\n")
             f.write(f"Seed mutation rate: {self.seed_mutation_rate}\n\n")
 
             f.write(f"Pattern:\n")
