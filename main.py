@@ -12,12 +12,12 @@ import sys
 #
 # Need to redefine these functions outside the class for the sort function
 #
-def fitness_pattern_match(organism):
-    return organism.fitness_pattern_match()
+def ff_pattern_match_first(organism):
+    return organism.ff_pattern_match_first()
 
 
-def fitness_pattern_match_2_color(organism):
-    return organism.fitness_pattern_match_2_color()
+def ff_pattern_match_best(organism):
+    return organism.ff_pattern_match_best()
 
 
 #
@@ -44,7 +44,7 @@ class PATS_Approximator:
         self.write_info()
         self.population = [Organism(self.pattern, self.mutation_rate)
                            for _ in range(self.population_size)]
-        self.population.sort(key=fitness_pattern_match, reverse=True)
+        self.population.sort(key=ff_pattern_match_best, reverse=True)
         self.best_score = self.population[0].score
         self.write_population()
 
@@ -70,7 +70,7 @@ class PATS_Approximator:
         self.generation += 1
 
         # score and sort
-        self.population.sort(key=fitness_pattern_match_2_color, reverse=True)
+        self.population.sort(key=ff_pattern_match_best, reverse=True)
 
         # update best score
         if self.population[0].score > self.best_score:
@@ -263,7 +263,7 @@ class Organism:
         self.seed_assembly = Assembly(seed_tiles)
 
         # init
-        self.fitness_pattern_match()
+        self.ff_pattern_match_best()
 
     def __str__(self):
         res = ""
@@ -286,7 +286,7 @@ class Organism:
     # Perfect score: every color correct + no tiles used
     # Subtract 1 for every incorrect color
     # Subtract 1 for every tile used
-    def fitness_pattern_match(self):
+    def ff_pattern_match_first(self):
         self.perfect_score = self.pattern_size ** 2 * 2
         self.score = self.pattern_size ** 2 * 2
         self.incorrect = 0
@@ -311,7 +311,7 @@ class Organism:
     # Perfect score: every color correct + no tiles used
     # Subtract 1 for every incorrect color
     # Subtract 1 for every tile used
-    def fitness_pattern_match_2_color(self):
+    def ff_pattern_match_best(self):
         self.perfect_score = self.pattern_size ** 2 * 2
         self.score = self.pattern_size ** 2 * 2
         self.incorrect = 0
