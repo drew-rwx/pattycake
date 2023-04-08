@@ -28,6 +28,10 @@ def ff_pattern_match_best_tile_limit(organism):
     return organism.ff_pattern_match_best_tile_limit()
 
 
+def ff_line_match_first(organism):
+    return organism.ff_line_match_first()
+
+
 #
 # PATSApproximator
 #
@@ -55,7 +59,7 @@ class PATS_Approximator:
         self.population = [Organism(self.pattern, self.mutation_rate, self.seed_mutation_rate)
                            for _ in range(self.population_size)]
         self.population.sort(
-            key=ff_pattern_match_best_tile_limit, reverse=True)
+            key=ff_line_match_first, reverse=True)
         self.best_score = self.population[0].score
         self.write_population()
 
@@ -86,7 +90,7 @@ class PATS_Approximator:
 
         # score and sort
         self.population.sort(
-            key=ff_pattern_match_best_tile_limit, reverse=True)
+            key=ff_line_match_first, reverse=True)
         tileset_size = len(self.population[0].tile_color_map)
         incorrect = self.population[0].incorrect
         if incorrect == 0 and tileset_size < self.tileset_size_limit:
@@ -287,7 +291,7 @@ class Organism:
         self.seed_assembly = Assembly(seed_tiles)
 
         # init
-        self.ff_pattern_match_best_tile_limit()
+        self.ff_line_match_first()
 
     def __str__(self):
         res = ""
@@ -307,6 +311,54 @@ class Organism:
         res += str(self.assembly)
 
         return res
+
+    # Perfect score: every line of tiles correct (— and |) + no tiles used
+    # Subtract 1 for every incorrect line, once per (row, column) pair
+    # Subtract 1 for every tile used
+    def ff_line_match_first(self):
+        self.perfect_score = self.pattern_size ** 2 + self.pattern_size * 2
+        self.score = self.perfect_score
+        self.incorrect = 0
+        self.tile_color_map = {}
+        self.assembly = self.seed_assembly.assemble(self.gluetable)
+
+        for r in range(1, self.assembly.size):
+            for c in range(1, self.assembly.size):
+                color = self.pattern[(
+                    (self.pattern_size - r) * self.pattern_size) + (c - 1)]
+                tile = self.assembly.tile_at(r, c)
+
+                if tile not in self.tile_color_map:
+                    self.tile_color_map[tile] = color
+
+        wrong = {}
+        for r in range(1, self.assembly.size):
+            for c in range(1, self.assembly.size):
+                color = self.pattern[(
+                    (self.pattern_size - r) * self.pattern_size) + (c - 1)]
+                tile = self.assembly.tile_at(r, c)
+                tile_color = self.tile_color_map[tile]
+
+                if tile_color != color and (r, c) not in wrong:
+                    self.incorrect += 1
+                    wrong[(r, c)] = 1
+                    break
+
+        for c in range(1, self.assembly.size):
+            for r in range(1, self.assembly.size):
+                color = self.pattern[(
+                    (self.pattern_size - r) * self.pattern_size) + (c - 1)]
+                tile = self.assembly.tile_at(r, c)
+                tile_color = self.tile_color_map[tile]
+
+                if tile_color != color and (r, c) not in wrong:
+                    self.incorrect += 1
+                    wrong[(r, c)] = 1
+                    break
+
+        self.score -= self.incorrect
+        self.score -= len(self.tile_color_map)
+        return self.score
 
     # Perfect score: every color correct + no tiles used
     # Subtract 1 for every incorrect color
@@ -530,7 +582,7 @@ if __name__ == "__main__":
 
     # default random pattern
     colors = ['b', 'w']
-    pattern_size = 6
+    pattern_size = 4
     pattern = [random.choice(colors) for _ in range(pattern_size ** 2)]
 
     # if pattern passed in, use that instead
@@ -540,7 +592,7 @@ if __name__ == "__main__":
             data = file.read()
             pattern = data.split()
 
-    pats = PATS_Approximator(pattern, 200)
+    pats = PATS_Approximator(pattern, 250)
 
     # number of generations
     generations = 25
