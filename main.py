@@ -36,7 +36,7 @@ def ff_line_match_first(organism):
 # PATSApproximator
 #
 class PATS_Approximator:
-    def __init__(self, pattern, population_size):
+    def __init__(self, pattern, population_size, ff):
         # class variables
         self.id = datetime.datetime.now()
         self.id = (
@@ -46,6 +46,7 @@ class PATS_Approximator:
             + f"{self.id.minute:02}"
             + f"{self.id.second:02}"
         )
+        self.ff = ff
         self.mutation_rate = 0.25
         self.seed_mutation_rate = 0.30
         self.pattern = pattern
@@ -58,8 +59,7 @@ class PATS_Approximator:
         self.tileset_size_limit = self.pattern_size ** 2 - 1
         self.population = [Organism(self.pattern, self.mutation_rate, self.seed_mutation_rate)
                            for _ in range(self.population_size)]
-        self.population.sort(
-            key=ff_line_match_first, reverse=True)
+        self.population.sort(key=self.ff, reverse=True)
         self.best_score = self.population[0].score
         self.write_population()
 
@@ -89,8 +89,7 @@ class PATS_Approximator:
         self.generation += 1
 
         # score and sort
-        self.population.sort(
-            key=ff_line_match_first, reverse=True)
+        self.population.sort(key=self.ff, reverse=True)
         tileset_size = len(self.population[0].tile_color_map)
         incorrect = self.population[0].incorrect
         if incorrect == 0 and tileset_size < self.tileset_size_limit:
@@ -120,7 +119,8 @@ class PATS_Approximator:
             f.write(f"Random seed: {self.random_seed}\n")
             f.write(f"Population size: {self.population_size}\n")
             f.write(f"Mutation rate: {self.mutation_rate}\n")
-            f.write(f"Seed mutation rate: {self.seed_mutation_rate}\n\n")
+            f.write(f"Seed mutation rate: {self.seed_mutation_rate}\n")
+            f.write(f"Fitness function: {self.ff.__name__}\n\n")
 
             f.write(f"Pattern:\n")
             for r in range(self.pattern_size):
@@ -289,9 +289,6 @@ class Organism:
         seed_tiles = [random.randint(1, self.max_glues)
                       for _ in range(self.pattern_size * 2)]
         self.seed_assembly = Assembly(seed_tiles)
-
-        # init
-        self.ff_line_match_first()
 
     def __str__(self):
         res = ""
