@@ -128,6 +128,14 @@ class PATS_Approximator:
                     f.write(self.pattern[(r * self.pattern_size) + c] + " ")
                 f.write("\n")
 
+    def write_data(self):
+        path = os.path.join("data", f"{self.id}_{self.ff.__name__}.cvs")
+
+        # make dir, write in file
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "a") as f:
+            f.write(f"{self.generation},{self.tileset_size_limit}\n")
+
     def write_population(self):
         path = os.path.join("runs", str(
             self.id), "score_" + f"{self.best_score:03}" + "_population.txt")
